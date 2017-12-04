@@ -54,6 +54,11 @@ class wazuh::server (
   $wazuh_manager_verify_manager_ssl    = false,
   $wazuh_manager_server_crt            = undef,
   $wazuh_manager_server_key            = undef,
+  $deb_repo                            = $::wazuh::params::deb_repo,
+  $deb_key                             = $::wazuh::params::deb_key,
+  $deb_key_id                          = $::wazuh::params::deb_key_id,
+  $rpm_repo                            = $::wazuh::params::rpm_repo,
+  $rpm_key                             = $::wazuh::params::rpm_key
 ) inherits wazuh::params {
   validate_bool(
     $ossec_active_response, $ossec_rootcheck,
@@ -78,11 +83,19 @@ class wazuh::server (
   }
 
   if $manage_repos {
-    # TODO: Allow filtering of EPEL requirement
-    class { 'wazuh::repo': redhat_manage_epel => $manage_epel_repo }
     if $::osfamily == 'Debian' {
+      class { 'wazuh::repo':
+        deb_repo   => $deb_repo,
+        deb_key    => $deb_key,
+        deb_key_id => $deb_key_id
+      }
       Class['wazuh::repo'] -> Class['apt::update'] -> Package[$wazuh::params::server_package]
     } else {
+      class { 'wazuh::repo':
+        redhat_manage_epel => $manage_epel_repo,
+        rpm_repo           => $rpm_repo,
+        rpm_key            => $rpm_key
+      }
       Class['wazuh::repo'] -> Package[$wazuh::params::server_package]
     }
 

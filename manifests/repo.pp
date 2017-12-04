@@ -1,8 +1,12 @@
 # Repo installation
 class wazuh::repo (
   $redhat_manage_epel = true,
+  $deb_repo           = $::wazuh::params::deb_repo,
+  $deb_key            = $::wazuh::params::deb_key,
+  $deb_key_id         = $::wazuh::params::deb_key_id,
+  $rpm_repo           = $::wazuh::params::rpm_repo,
+  $rpm_key            = $::wazuh::params::rpm_key
 ) {
-
   case $::osfamily {
     'Debian' : {
       if ! defined(Package['apt-transport-https']) {
@@ -10,87 +14,30 @@ class wazuh::repo (
       }
       # apt-key added by issue #34
       apt::key { 'wazuh':
-        id     => '0DCFCA5547B19D2A6099506096B3EE5F29111145',
-        source => 'https://packages.wazuh.com/key/GPG-KEY-WAZUH',
+        id     => $deb_key_id,
+        source => $deb_key,
         server => 'pgp.mit.edu'
       }
-      case $::lsbdistcodename {
-        /(precise|trusty|vivid|wily|xenial|yakketi)/: {
-
-          apt::source { 'wazuh':
-            ensure   => present,
-            comment  => 'This is the WAZUH Ubuntu repository',
-            location => 'https://packages.wazuh.com/apt',
-            release  => $::lsbdistcodename,
-            repos    => 'main',
-            include  => {
-              'src' => false,
-              'deb' => true,
-            },
-          }
-
+      apt::source { 'wazuh':
+        ensure   => present,
+        comment  => 'This is the WAZUH repository',
+        location => $deb_repo,
+        release  => $::lsbdistcodename,
+        repos    => 'main',
+        include  => {
+          'src' => false,
+          'deb' => true,
         }
-        /^(jessie|wheezy|stretch|sid)$/: {
-          apt::source { 'wazuh':
-            ensure   => present,
-            comment  => 'This is the WAZUH Debian repository',
-            location => 'https://packages.wazuh.com/apt',
-            release  => $::lsbdistcodename,
-            repos    => 'main',
-            include  => {
-              'src' => false,
-              'deb' => true,
-            },
-          }
-        }
-        default: { fail('This ossec module has not been tested on your distribution (or lsb package not installed)') }
       }
     }
     'Linux', 'Redhat' : {
-      if ( $::operatingsystem == 'Amazon' ) {
-        $repotype = 'Amazon Linux'
-        $baseurl  = 'https://packages.wazuh.com/yum/rhel/6Server/$basearch'
-        $gpgkey   = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
-      }
-      else {
-        case $::os[name] {
-          'CentOS': {
-            if ( $::operatingsystemrelease =~ /^5.*/ ) {
-              $repotype = 'CentOS 5'
-              $baseurl  = 'https://packages.wazuh.com/yum/el/$releasever/$basearch'
-              $gpgkey   = 'https://packages.wazuh.com/key/RPM-GPG-KEY-OSSEC-RHEL5'
-            } else {
-              $repotype = 'CentOS > 5'
-              $baseurl  = 'https://packages.wazuh.com/yum/el/$releasever/$basearch'
-              $gpgkey   = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
-            }
-          }
-          /^(RedHat|OracleLinux)$/: {
-            if ( $::operatingsystemrelease =~ /^5.*/ ) {
-              $repotype = 'RedHat 5'
-              $baseurl  = 'https://packages.wazuh.com/yum/rhel/$releasever/$basearch'
-              $gpgkey   = 'https://packages.wazuh.com/key/RPM-GPG-KEY-OSSEC-RHEL5'
-            } else {
-              $repotype = 'RedHat > 5'
-              $baseurl  = 'https://packages.wazuh.com/yum/rhel/$releasever/$basearch'
-              $gpgkey   = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
-            }
-          }
-          'Fedora': {
-              $repotype = 'Fedora'
-              $baseurl  = 'https://packages.wazuh.com/yum/fc/$releasever/$basearch'
-              $gpgkey   = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
-          }
-          default: { fail('This ossec module has not been tested on your distribution.') }
-        }
-      }
       # Set up OSSEC repo
       yumrepo { 'wazuh':
-        descr    => "WAZUH OSSEC Repository - www.wazuh.com # ${repotype}",
+        descr    => 'WAZUH OSSEC Repository - www.wazuh.com',
         enabled  => true,
         gpgcheck => 1,
-        gpgkey   => $gpgkey,
-        baseurl  => $baseurl
+        gpgkey   => $rpm_key,
+        baseurl  => $rpm_repo
       }
 
       if $redhat_manage_epel {

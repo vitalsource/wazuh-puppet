@@ -2,7 +2,6 @@
 class wazuh::params {
   case $::kernel {
     'Linux': {
-
       $config_file = '/var/ossec/etc/ossec.conf'
       $shared_agent_config_file = '/var/ossec/etc/shared/agent.conf'
 
@@ -33,17 +32,19 @@ class wazuh::params {
         {'name' => 'port', 'value' => '55000'},
         {'name' => 'https', 'value' => 'no'},
         {'name' => 'basic_auth', 'value' => 'yes'},
-        {'name' => 'BehindProxyServer', 'value' => 'no'},
+        {'name' => 'BehindProxyServer', 'value' => 'no'}
       ]
 
       case $::osfamily {
         'Debian': {
-
-          $agent_service  = 'wazuh-agent'
-          $agent_package  = 'wazuh-agent'
-          $service_has_status  = false
+          $agent_service = 'wazuh-agent'
+          $agent_package = 'wazuh-agent'
+          $service_has_status = false
           $ossec_service_provider = undef
           $api_service_provider = undef
+          $deb_repo = 'https://packages.wazuh.com/apt'
+          $deb_key = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
+          $deb_key_id = '0DCFCA5547B19D2A6099506096B3EE5F29111145'
 
           $default_local_files = {
             '/var/log/syslog'                      => 'syslog',
@@ -62,9 +63,9 @@ class wazuh::params {
               $api_package = 'wazuh-api'
               $wodle_openscap_content = {
                 'ssg-ubuntu-1604-ds.xml' => {
-                  'type' => 'xccdf',
-                  profiles => ['xccdf_org.ssgproject.content_profile_common'],
-                },
+                  type => 'xccdf',
+                  profiles => ['xccdf_org.ssgproject.content_profile_common']
+                }
               }
             }
             'jessie': {
@@ -74,11 +75,11 @@ class wazuh::params {
               $api_package = 'wazuh-api'
               $wodle_openscap_content = {
                 'ssg-debian-8-ds.xml' => {
-                  'type' => 'xccdf',
-                  profiles => ['xccdf_org.ssgproject.content_profile_common'],
+                  type => 'xccdf',
+                  profiles => ['xccdf_org.ssgproject.content_profile_common']
                 },
                 'cve-debian-oval.xml' => {
-                  'type' => 'oval',
+                  type => 'oval'
                 }
               }
             }
@@ -89,14 +90,12 @@ class wazuh::params {
               $api_package = 'wazuh-api'
               $wodle_openscap_content = undef
             }
-        default: {
-          fail("Module ${module_name} is not supported on ${::operatingsystem}")
-        }
+            default: {
+              fail("Module ${module_name} is not supported on ${::operatingsystem}")
+            }
           }
-
         }
         'Linux', 'RedHat': {
-
           $agent_service  = 'wazuh-agent'
           $agent_package  = 'wazuh-agent'
           $server_service = 'wazuh-manager'
@@ -115,62 +114,84 @@ class wazuh::params {
             '/var/log/httpd/access_log' => 'apache',
             '/var/log/httpd/error_log'  => 'apache'
           }
-          case $::operatingsystem {
-            'CentOS': {
-              if ( $::operatingsystemrelease =~ /^6.*/ ) {
-                $wodle_openscap_content = {
-                  'ssg-centos-6-ds.xml' => {
-                    'type' => 'xccdf',
-                    profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_server',]
+          if ( $::operatingsystem == 'Amazon' ) {
+            $wodle_openscap_content = undef
+            $rpm_repo = 'https://packages.wazuh.com/yum/el/6Server/$basearch'
+            $rpm_key = 'https://packages.wazuh.com/key/RPM-GPG-KEY-OSSEC-RHEL5'
+          } else {
+            case $::os[name] {
+              'CentOS': {
+                $rpm_repo = 'https://packages.wazuh.com/yum/el/$releasever/$basearch'
+                if ( $::operatingsystemrelease =~ /^5.*/ ) {
+                  $wodle_openscap_content = undef
+                  $rpm_key = 'https://packages.wazuh.com/key/RPM-GPG-KEY-OSSEC-RHEL5'
+                }
+                if ( $::operatingsystemrelease =~ /^6.*/ ) {
+                  $wodle_openscap_content = {
+                    'ssg-centos-6-ds.xml' => {
+                      type => 'xccdf',
+                      profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_server']
+                    }
+                  }
+                  $rpm_key = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
+                }
+                if ( $::operatingsystemrelease =~ /^7.*/ ) {
+                  $wodle_openscap_content = {
+                    'ssg-centos-7-ds.xml' => {
+                      type => 'xccdf',
+                      profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_common']
+                    }
+                  }
+                  $rpm_key = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
                 }
               }
-              }
-              if ( $::operatingsystemrelease =~ /^7.*/ ) {
-                $wodle_openscap_content = {
-                  'ssg-centos-7-ds.xml' => {
-                    'type' => 'xccdf',
-                    profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_common',]
+              /^(RedHat|OracleLinux)$/: {
+                $rpm_repo = 'https://packages.wazuh.com/yum/rhel/$releasever/$basearch'
+                if ( $::operatingsystemrelease =~ /^5.*/ ) {
+                  $wodle_openscap_content = undef
+                  $rpm_key = 'https://packages.wazuh.com/key/RPM-GPG-KEY-OSSEC-RHEL5'
+                }
+                if ( $::operatingsystemrelease =~ /^6.*/ ) {
+                  $wodle_openscap_content = {
+                    'ssg-rhel-6-ds.xml' => {
+                      type => 'xccdf',
+                      profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_server']
+                    },
+                    'cve-redhat-6-ds.xml' => {
+                      type => 'xccdf',
+                    }
+                  }
+                  $rpm_key = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
+                }
+                if ( $::operatingsystemrelease =~ /^7.*/ ) {
+                  $wodle_openscap_content = {
+                    'ssg-rhel-7-ds.xml' => {
+                      type => 'xccdf',
+                      profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_common',]
+                    },
+                    'cve-redhat-7-ds.xml' => {
+                      type => 'xccdf',
+                    }
+                  }
+                  $rpm_key = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
                 }
               }
-              }
-            }
-            /^(RedHat|OracleLinux)$/: {
-              if ( $::operatingsystemrelease =~ /^6.*/ ) {
-                $wodle_openscap_content = {
-                  'ssg-rhel-6-ds.xml' => {
-                    'type' => 'xccdf',
-                    profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_server',]
-                },
-                'cve-redhat-6-ds.xml' => {
-                'type' => 'xccdf',
+              'Fedora': {
+                $rpm_repo = 'https://packages.wazuh.com/yum/fc/$releasever/$basearch'
+                $rpm_key = 'https://packages.wazuh.com/key/GPG-KEY-WAZUH'
+                if ( $::operatingsystemrelease =~ /^(23|24|25).*/ ) {
+                  $wodle_openscap_content = {
+                    'ssg-fedora-ds.xml' => {
+                      type => 'xccdf',
+                      profiles => ['xccdf_org.ssgproject.content_profile_standard', 'xccdf_org.ssgproject.content_profile_common']
+                    },
                   }
+                }
               }
-              }
-              if ( $::operatingsystemrelease =~ /^7.*/ ) {
-                $wodle_openscap_content = {
-                  'ssg-rhel-7-ds.xml' => {
-                    'type' => 'xccdf',
-                    profiles => ['xccdf_org.ssgproject.content_profile_pci-dss', 'xccdf_org.ssgproject.content_profile_common',]
-                },
-                'cve-redhat-7-ds.xml' => {
-                'type' => 'xccdf',
-                  }
-              }
-              }
-            }
-            'Fedora': {
-              if ( $::operatingsystemrelease =~ /^(23|24|25).*/ ) {
-                $wodle_openscap_content = {
-                  'ssg-fedora-ds.xml' => {
-                    type => 'xccdf',
-                    profiles => ['xccdf_org.ssgproject.content_profile_standard', 'xccdf_org.ssgproject.content_profile_common',]
-                },
-              }
-              }
-            }
-            default: { fail('This ossec module has not been tested on your distribution') }
+              default: { fail('This ossec module has not been tested on your distribution') }
             }
           }
+        }
         default: { fail('This ossec module has not been tested on your distribution') }
     }
   }
